@@ -4,20 +4,20 @@
 #  http://neopythonic.blogspot.com/2009/04/tail-recursion-elimination.html and
 #  http://neopythonic.blogspot.com/2009/04/final-words-on-tail-calls.html
 
+from collections import namedtuple
 from decorator import decorator
 import inspect
 
-NONTERMINAL = object()
+Call = namedtuple('Call', ['func', 'args', 'kwargs'])
 
 @decorator
 def stackless(func, *args, **kwargs):
     stack = inspect.stack()
-    if all(frame.function != stack[0].function for frame in stack[1:]):  # If first time.
+    if all(frame.function != stack[0].function for frame in stack[1:]):  # If current frame's function is not already on the stack:
         out = func(*args, **kwargs)
-        while isinstance(out, tuple) and out and out[0] == NONTERMINAL:
-            _, callee, args, kwargs = out
-            out = callee(*args, **kwargs)
+        while isinstance(out, Call):
+            out = out.func(*out.args, **out.kwargs)
         return out
     else:
-        return (NONTERMINAL, func, args, kwargs)
+        return Call(func, args, kwargs)
 
